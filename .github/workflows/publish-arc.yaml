@@ -9,8 +9,10 @@ on:
     # Expects the following JSON payload:
     # {
     #   "client_payload": {
-    #     "release_tag_name": "v0.18.0"
-    #     "push_to_registries": true
+    #     "release_tag_name": "v0.18.0",
+    #     "push_to_registries": true,
+    #     "repository": "organization/repository-name",
+    #     "organization": "organization-name"
     #   }
     # }
 
@@ -21,8 +23,8 @@ permissions:
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  TARGET_ORG: actions-runner-controller
-  TARGET_REPO: actions-runner-controller
+  TARGET_ORG: ${{ github.repository_owner }}
+  TARGET_REPO: ${{ github.event.repository.name || github.repository.split('/')[1] }}
 
 concurrency:
   group: ${{ github.workflow }}
@@ -32,8 +34,6 @@ jobs:
   release-controller:
     name: Release
     runs-on: ubuntu-latest
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - name: Input validation
         run: |
@@ -45,6 +45,79 @@ jobs:
             echo "client_payload.release_tag_name cannot be empty"
             exit 1
           fi
+
+      - name: Security validation
+        run: |
+          # Log detailed security context for debugging
+          echo "============ SECURITY CONTEXT ============"
+          echo "Event type: ${{ github.event_name }}"
+          echo "Sender: ${{ github.event.sender.login }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Client repository: ${{ github.event.client_payload.repository || 'Not provided' }}"
+          echo "Client organization: ${{ github.event.client_payload.organization || 'Not provided' }}"
+          echo "Target organization: ${{ env.TARGET_ORG }}"
+          echo "Target repository: ${{ env.TARGET_REPO }}"
+          echo "Release tag: ${{ github.event.client_payload.release_tag_name }}"
+          echo "=========================================="
+          
+          # 1. Verify sender's organization matches our TARGET_ORG
+          SENDER_ORG=$(echo "${{ github.event.sender.login }}" | tr '[:upper:]' '[:lower:]')
+          TARGET_ORG_LOWER=$(echo "${{ env.TARGET_ORG }}" | tr '[:upper:]' '[:lower:]')
+          
+          echo "Checking sender organization: $SENDER_ORG against target: $TARGET_ORG_LOWER"
+          
+          if [[ "$SENDER_ORG" != "$TARGET_ORG_LOWER" ]]; then
+            echo "SECURITY ERROR: Unauthorized sender. Sender organization $SENDER_ORG does not match our target organization $TARGET_ORG_LOWER"
+            exit 1
+          fi
+          echo "✓ Sender validation passed"
+          
+          # 2. Verify the event comes from our main repository
+          if [[ "${{ github.event.repository.full_name }}" != "${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}" ]]; then
+            echo "SECURITY ERROR: Unauthorized source repository. Event not from the main repository (${{ github.event.repository.full_name }} vs ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }})"
+            exit 1
+          fi
+          echo "✓ Repository validation passed"
+          
+          # 3. Check client repository that triggered the dispatch if available
+          if [[ -n "${{ github.event.client_payload.repository }}" ]]; then
+            CLIENT_REPO="${{ github.event.client_payload.repository }}"
+            echo "Checking client repository: $CLIENT_REPO"
+            
+            # Extract client repository owner
+            CLIENT_ORG=$(echo "$CLIENT_REPO" | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
+            
+            if [[ "$CLIENT_ORG" != "$TARGET_ORG_LOWER" ]]; then
+              echo "SECURITY ERROR: Unauthorized client repository. Client repository organization ($CLIENT_ORG) does not match target organization ($TARGET_ORG_LOWER)"
+              exit 1
+            fi
+            echo "✓ Client repository validation passed"
+          else
+            echo "ℹ️ No client repository information provided in the payload"
+            
+            # Check organization directly if provided
+            if [[ -n "${{ github.event.client_payload.organization }}" ]]; then
+              CLIENT_ORG=$(echo "${{ github.event.client_payload.organization }}" | tr '[:upper:]' '[:lower:]')
+              echo "Checking client organization: $CLIENT_ORG"
+              
+              if [[ "$CLIENT_ORG" != "$TARGET_ORG_LOWER" ]]; then
+                echo "SECURITY ERROR: Unauthorized client organization. Client organization ($CLIENT_ORG) does not match target organization ($TARGET_ORG_LOWER)"
+                exit 1
+              fi
+              echo "✓ Client organization validation passed"
+            else
+              echo "⚠️ WARNING: No client repository or organization information provided in the payload. Security validation is limited."
+            fi
+          fi
+          
+          # 4. Additional payload verification
+          if [[ -z "${{ github.event.client_payload.release_tag_name }}" ]]; then
+            echo "SECURITY ERROR: Missing required payload parameter: release_tag_name"
+            exit 1
+          fi
+          echo "✓ Payload validation passed"
+          
+          echo "✅ All security validations passed. Proceeding with workflow."
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -60,7 +133,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: actions/actions-runner-controller
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
           path: arc/
           ref: ${{ github.event.client_payload.release_tag_name }}
 
