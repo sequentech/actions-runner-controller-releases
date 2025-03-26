@@ -25,6 +25,7 @@ env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   TARGET_ORG: ${{ vars.TARGET_ORG }}
   TARGET_REPO: ${{ vars.TARGET_REPO }}
+  TARGET_RELEASES_REPO: ${{ vars.TARGET_RELEASES_REPO }}
 
 concurrency:
   group: ${{ github.workflow }}
@@ -54,7 +55,7 @@ jobs:
           echo "Sender: ${{ github.event.sender.login }}"
           echo "Repository: ${{ github.repository }}"
           echo "Target organization: ${{ env.TARGET_ORG }}"
-          echo "Target repository: ${{ env.TARGET_REPO }}"
+          echo "Target repository: ${{ env.TARGET_RELEASES_REPO }}"
           echo "Release tag: ${{ github.event.client_payload.release_tag_name }}"
           echo "=========================================="
           
@@ -71,8 +72,8 @@ jobs:
           echo "✓ Sender validation passed"
           
           # 2. Verify the event comes from our main repository
-          if [[ "${{ github.event.repository.full_name }}" != "${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}" ]]; then
-            echo "SECURITY ERROR: Unauthorized source repository. Event not from the main repository (${{ github.event.repository.full_name }} vs ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }})"
+          if [[ "${{ github.event.repository.full_name }}" != "${{ env.TARGET_ORG }}/${{ env.TARGET_RELEASES_REPO }}" ]]; then
+            echo "SECURITY ERROR: Unauthorized source repository. Event not from the main repository (${{ github.event.repository.full_name }} vs ${{ env.TARGET_ORG }}/${{ env.TARGET_RELEASES_REPO }})"
             exit 1
           fi
           echo "✓ Repository validation passed"
