@@ -23,8 +23,8 @@ permissions:
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  TARGET_ORG: ${{ env.TARGET_ORG }}
-  TARGET_REPO: ${{ env.TARGET_REPO }}
+  TARGET_ORG: ${{ vars.TARGET_ORG }}
+  TARGET_REPO: ${{ vars.TARGET_REPO }}
 
 concurrency:
   group: ${{ github.workflow }}
