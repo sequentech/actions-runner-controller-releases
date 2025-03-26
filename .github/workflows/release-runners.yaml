@@ -103,7 +103,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          repository: actions/actions-runner-controller
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
           path: arc/
           ref: ${{ inputs.sha }}
 
