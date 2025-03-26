@@ -21,7 +21,7 @@ permissions:
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  TARGET_ORG: actions-runner-controller
+  TARGET_ORG: ${{ vars.TARGET_ORG }}
   TARGET_REPO: actions-runner-controller
 
 concurrency:
