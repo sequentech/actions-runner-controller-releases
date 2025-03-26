@@ -23,8 +23,8 @@ permissions:
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  TARGET_ORG: ${{ github.repository_owner }}
-  TARGET_REPO: ${{ github.event.repository.name || github.repository.split('/')[1] }}
+  TARGET_ORG: ${{ env.TARGET_ORG }}
+  TARGET_REPO: ${{ env.TARGET_REPO }}
 
 concurrency:
   group: ${{ github.workflow }}
