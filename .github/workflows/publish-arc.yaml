@@ -53,8 +53,6 @@ jobs:
           echo "Event type: ${{ github.event_name }}"
           echo "Sender: ${{ github.event.sender.login }}"
           echo "Repository: ${{ github.repository }}"
-          echo "Client repository: ${{ github.event.client_payload.repository || 'Not provided' }}"
-          echo "Client organization: ${{ github.event.client_payload.organization || 'Not provided' }}"
           echo "Target organization: ${{ env.TARGET_ORG }}"
           echo "Target repository: ${{ env.TARGET_REPO }}"
           echo "Release tag: ${{ github.event.client_payload.release_tag_name }}"
@@ -62,7 +60,7 @@ jobs:
           
           # 1. Verify sender's organization matches our TARGET_ORG
           SENDER_ORG=$(echo "${{ github.event.sender.login }}" | tr '[:upper:]' '[:lower:]')
-          TARGET_ORG_LOWER=$(echo "${{ env.TARGET_ORG }}" | tr '[:upper:]' '[:lower:]')
+          TARGET_ORG_LOWER="publish-arc[bot]"
           
           echo "Checking sender organization: $SENDER_ORG against target: $TARGET_ORG_LOWER"
           
